@@ -136,107 +136,117 @@
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <script>
-    const map = L.map('map').setView([0, 0], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap'
-    }).addTo(map);
+    // ✅ DOM loaded event
+    document.addEventListener("DOMContentLoaded", () => {
+      // 🗺️ Setup map
+      const map = L.map('map').setView([20.5937, 78.9629], 5);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+      }).addTo(map);
 
-    navigator.geolocation.getCurrentPosition(pos => {
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
-      map.setView([lat, lng], 15);
-      L.marker([lat, lng]).addTo(map).bindPopup("You are here").openPopup();
-    }, () => {
-      map.setView([20.5937, 78.9629], 5); // fallback to India
-    });
-
-    const supabase = supabase.createClient(
-      'https://jhedjiolhqdxmqjknipz.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpoZWRqaW9saHFkeG1xamtuaXB6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM1MzUzMjcsImV4cCI6MjA2OTExMTMyN30.z5aYCuIHuUb_GXqbGO8rMki-36f7SYT0PVAUeMvcS0Q'
-    );
-
-    const camera = document.getElementById('camera');
-    const canvas = document.getElementById('canvas');
-    const preview = document.getElementById('preview');
-
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => camera.srcObject = stream)
-      .catch(() => console.warn("Camera not accessible"));
-
-    document.getElementById('addBtn').onclick = () => {
-      const form = document.getElementById('addForm');
-      form.style.display = form.style.display === 'none' ? 'block' : 'none';
-    };
-
-    function capturePhoto() {
-      canvas.width = camera.videoWidth;
-      canvas.height = camera.videoHeight;
-      canvas.getContext('2d').drawImage(camera, 0, 0);
-      preview.src = canvas.toDataURL('image/png');
-    }
-
-    async function saveShop() {
-      const shopName = document.getElementById('shopName').value;
-      const ownerName = document.getElementById('ownerName').value;
-      const category = document.getElementById('shopCategory').value;
-      const description = document.getElementById('description').value;
-      const contact = document.getElementById('contact').value;
-      const image = canvas.toDataURL('image/png');
-
-      navigator.geolocation.getCurrentPosition(async pos => {
+      navigator.geolocation.getCurrentPosition(pos => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
-
-        try {
-          const { data, error } = await supabase.from('shops').insert([{
-            shop_name: shopName,
-            owner_name: ownerName,
-            category,
-            description,
-            contact,
-            lat,
-            lng,
-            image_url: image
-          }]);
-
-          if (error) throw error;
-          alert("Shop saved!");
-          location.reload();
-        } catch (e) {
-          console.error("Save error", e.message);
-          alert("Failed to save shop.");
-        }
+        map.setView([lat, lng], 15);
+        L.marker([lat, lng]).addTo(map).bindPopup("You are here").openPopup();
       });
-    }
 
-    async function fetchShops() {
-      try {
-        const { data: shops, error } = await supabase.from('shops').select('*');
-        if (error) throw error;
-        shops.forEach(shop => {
-          if (shop.lat && shop.lng) {
-            L.marker([shop.lat, shop.lng])
-              .addTo(map)
-              .bindPopup(`<b>${shop.shop_name}</b><br>${shop.category}<br>${shop.contact || ''}`);
+      // ✅ Supabase
+      const supabase = supabase.createClient(
+        'https://jhedjiolhqdxmqjknipz.supabase.co',
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpoZWRqaW9saHFkeG1xamtuaXB6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM1MzUzMjcsImV4cCI6MjA2OTExMTMyN30.z5aYCuIHuUb_GXqbGO8rMki-36f7SYT0PVAUeMvcS0Q'
+      );
+
+      // 🎥 Camera setup
+      const camera = document.getElementById('camera');
+      const canvas = document.getElementById('canvas');
+      const preview = document.getElementById('preview');
+
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => camera.srcObject = stream)
+        .catch(() => console.warn("Camera not accessible"));
+
+      // ➕ Button toggle
+      const addBtn = document.getElementById('addBtn');
+      const addForm = document.getElementById('addForm');
+
+      addBtn.addEventListener('click', () => {
+        addForm.style.display = addForm.style.display === 'none' || addForm.style.display === '' ? 'block' : 'none';
+      });
+
+      // 📸 Capture
+      window.capturePhoto = function () {
+        canvas.width = camera.videoWidth;
+        canvas.height = camera.videoHeight;
+        canvas.getContext('2d').drawImage(camera, 0, 0);
+        preview.src = canvas.toDataURL('image/png');
+      };
+
+      // 💾 Save shop
+      window.saveShop = async function () {
+        const shopName = document.getElementById('shopName').value;
+        const ownerName = document.getElementById('ownerName').value;
+        const category = document.getElementById('shopCategory').value;
+        const description = document.getElementById('description').value;
+        const contact = document.getElementById('contact').value;
+        const image = canvas.toDataURL('image/png');
+
+        navigator.geolocation.getCurrentPosition(async pos => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+
+          try {
+            const { data, error } = await supabase.from('shops').insert([{
+              shop_name: shopName,
+              owner_name: ownerName,
+              category,
+              description,
+              contact,
+              lat,
+              lng,
+              image_url: image
+            }]);
+
+            if (error) throw error;
+            alert("Shop saved!");
+            location.reload();
+          } catch (e) {
+            console.error("Save error", e.message);
+            alert("Failed to save shop.");
           }
-          document.getElementById('shopsList').innerHTML += `
-            <div class="shopCard">
-              <h3>${shop.shop_name}</h3>
-              <p><b>Owner:</b> ${shop.owner_name}</p>
-              <p><b>Category:</b> ${shop.category}</p>
-              <p>${shop.description}</p>
-              ${shop.contact ? `<p><b>Contact:</b> ${shop.contact}</p>` : ""}
-              ${shop.image_url ? `<img src="${shop.image_url}" class="preview"/>` : ""}
-            </div>
-          `;
         });
-      } catch (e) {
-        console.warn("DB fetch failed:", e.message);
-        document.getElementById('shopsList').innerHTML = `<p style="color:red;">Failed to load shops. Check internet or database access.</p>`;
-      }
-    }
+      };
 
-    fetchShops();
+      // 📍 Fetch shops
+      async function fetchShops() {
+        try {
+          const { data: shops, error } = await supabase.from('shops').select('*');
+          if (error) throw error;
+          shops.forEach(shop => {
+            if (shop.lat && shop.lng) {
+              L.marker([shop.lat, shop.lng])
+                .addTo(map)
+                .bindPopup(`<b>${shop.shop_name}</b><br>${shop.category}<br>${shop.contact || ''}`);
+            }
+            document.getElementById('shopsList').innerHTML += `
+              <div class="shopCard">
+                <h3>${shop.shop_name}</h3>
+                <p><b>Owner:</b> ${shop.owner_name}</p>
+                <p><b>Category:</b> ${shop.category}</p>
+                <p>${shop.description}</p>
+                ${shop.contact ? `<p><b>Contact:</b> ${shop.contact}</p>` : ""}
+                ${shop.image_url ? `<img src="${shop.image_url}" class="preview"/>` : ""}
+              </div>
+            `;
+          });
+        } catch (e) {
+          console.warn("DB fetch failed:", e.message);
+          document.getElementById('shopsList').innerHTML = `<p style="color:red;">Failed to load shops.</p>`;
+        }
+      }
+
+      fetchShops();
+    });
   </script>
 </body>
 </html>
