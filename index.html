@@ -21,12 +21,16 @@
   <div id="map"></div>
 
   <form id="shopForm">
+    <label for="image" style="display:inline-block; padding:10px 15px; background:#007BFF; color:white; border-radius:5px; cursor:pointer;">
+  📷 Capture Photo
+</label>
+<input type="file" id="image" accept="image/*" capture="environment" required style="display:none;">
+    <img id="preview" style="width:100px; display:none;"/>
+    
     <input type="text" id="shopName" placeholder="Shop Name" required>
     <input type="text" id="ownerName" placeholder="Owner Name" required>
     <textarea id="description" placeholder="Short Description" required></textarea>
     <input type="tel" id="contact" placeholder="Contact Number (Optional)">
-    <input type="file" id="image" accept="image/*" required>
-    <img id="preview" style="width:100px; display:none;"/>
     <input type="hidden" id="latitude">
     <input type="hidden" id="longitude">
     <button type="submit">Add Shop</button>
