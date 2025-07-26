@@ -1,112 +1,67 @@
 body {
   margin: 0;
   font-family: Arial, sans-serif;
-  background-color: #f2f2f2;
-  color: #333;
-}
-
-h1 {
+  background: #f4f4f4;
   text-align: center;
-  padding: 15px;
-  background-color: #007bff;
-  color: white;
-  margin: 0;
 }
 
 #map {
   height: 300px;
-  width: 100%;
+  margin: 10px;
+  border-radius: 10px;
+}
+
+h1 {
+  background: #28a745;
+  color: white;
+  padding: 10px;
+  margin: 0;
 }
 
 .controls {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  margin: 10px;
+}
+
+#addForm {
+  display: none;
+  margin: 10px;
+  background: #fff;
+  padding: 10px;
+  border-radius: 10px;
+  box-shadow: 0 0 5px #ccc;
+}
+
+input, textarea, select {
+  width: 90%;
+  padding: 8px;
+  margin: 5px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.shop {
+  background: white;
+  margin: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  box-shadow: 0 0 5px #ccc;
+  text-align: left;
+}
+
+img.preview {
+  max-width: 100%;
+  height: 150px;
+  border-radius: 10px;
+  margin-top: 5px;
+}
+
+#addBtn {
+  font-size: 30px;
+  cursor: pointer;
   margin: 10px;
 }
 
 #search {
-  padding: 10px;
-  width: 60%;
-  font-size: 16px;
-  border-radius: 5px;
-  border: 1px solid #ccc;
-}
-
-#addBtn {
-  margin-left: 10px;
-  padding: 10px 15px;
-  background-color: #28a745;
-  color: white;
-  border-radius: 5px;
-  font-size: 18px;
-  cursor: pointer;
-}
-
-#addForm {
-  padding: 15px;
-  background-color: white;
-  border-radius: 10px;
-  margin: 10px;
-  display: none;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-}
-
-#addForm input,
-#addForm select,
-#addForm textarea {
-  display: block;
-  width: 100%;
-  margin: 10px 0;
-  padding: 10px;
-  font-size: 16px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-}
-
-#addForm button {
-  background-color: #007bff;
-  color: white;
-  padding: 10px;
-  font-size: 16px;
-  border: none;
-  width: 100%;
-  border-radius: 5px;
-  cursor: pointer;
-  margin-top: 10px;
-}
-
-#preview {
-  display: block;
-  margin: 10px auto;
-  max-width: 100%;
-  border-radius: 10px;
-  border: 1px solid #ccc;
-}
-
-#shopsList {
-  padding: 10px;
-}
-
-.shop-card {
-  background-color: #fff;
-  border-radius: 10px;
-  padding: 15px;
-  margin: 10px 0;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.shop-card h3 {
-  margin: 0 0 5px;
-}
-
-.shop-card p {
-  margin: 5px 0;
-  font-size: 14px;
-}
-
-.shop-card img {
-  max-width: 100%;
-  border-radius: 8px;
-  margin-top: 10px;
+  width: 90%;
+  margin-bottom: 10px;
 }
