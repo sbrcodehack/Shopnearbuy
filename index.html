@@ -1,34 +1,41 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ShopNearBuy</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <link rel="stylesheet" href="style.css" />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-sA+e2hJ5Jv2c2gCWf7KH1j9hprkE4Rrzac+G3v5pW3s="
+    crossorigin=""
+  />
 </head>
 <body>
-  <h1>ShopNearBuy</h1>  <div id="map"></div>  <div class="controls">
-    <input type="text" id="search" placeholder="Search by name or category..." />
-    <div id="addBtn">➕</div>
-  </div>  <div id="addForm">
+  <h1>ShopNearBuy</h1>
+
+  <div id="map"></div>
+
+  <div class="controls">
+    <input type="text" id="search" placeholder="Search by shop or category..." />
+    <button id="addBtn">➕ Add Shop</button>
+  </div>
+
+  <form id="addForm">
     <input type="text" id="shopName" placeholder="Shop Name" required />
-    <input type="text" id="ownerName" placeholder="Owner Name" required />
-    <select id="shopCategory">
-      <option value="">Select Category</option>
-      <option>Grocery</option>
-      <option>Restaurant</option>
-      <option>Salon</option>
-      <option>Medical</option>
-      <option>Electronics</option>
-      <option>Other</option>
-    </select>
-    <textarea id="description" placeholder="Shop Description" required></textarea><video id="camera" autoplay playsinline width="100%" style="max-height: 200px; border-radius: 10px;"></video>
-<button type="button" onclick="capturePhoto()">📸 Capture Photo</button>
-<canvas id="canvas" style="display: none;"></canvas>
-<img id="preview" class="preview" alt="Captured image" />
+    <input type="text" id="ownerName" placeholder="Owner Name" />
+    <input type="text" id="category" placeholder="Category" />
+    <input type="text" id="contact" placeholder="Contact Number" />
+    <textarea id="description" placeholder="Shop Description"></textarea>
+    <input type="file" id="image" accept="image/*" />
+    <img id="preview" alt="Image preview" />
+    <button type="submit">Submit Shop</button>
+  </form>
 
-<input type="text" id="contact" placeholder="Contact Number (optional)" />
-<button onclick="saveShop()">Save Shop</button>
+  <div id="shopsList"></div>
 
-  </div>  <div id="shopsList"></div>  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>  <script src="script.js"></script></body>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script type="module" src="script.js"></script>
+</body>
 </html>
