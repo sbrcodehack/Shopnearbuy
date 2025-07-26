@@ -2,24 +2,143 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Shop Locator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ShopNearBuy</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    h1 {
+      text-align: center;
+      background: #2c3e50;
+      color: white;
+      padding: 10px 0;
+    }
+
+    #map {
+      height: 300px;
+      width: 100%;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+    }
+
+    #search {
+      flex: 1;
+      padding: 8px;
+      font-size: 16px;
+    }
+
+    #addBtn {
+      margin-left: 10px;
+      font-size: 24px;
+      cursor: pointer;
+      background-color: #2ecc71;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 5px;
+    }
+
+    #addForm {
+      padding: 10px;
+      background: #ecf0f1;
+      border-top: 2px solid #bdc3c7;
+    }
+
+    #addForm input,
+    #addForm textarea,
+    #addForm select {
+      width: 100%;
+      margin-bottom: 8px;
+      padding: 10px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+
+    #addForm button {
+      padding: 10px;
+      font-size: 16px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .preview {
+      max-width: 100%;
+      margin-top: 10px;
+      border-radius: 10px;
+    }
+
+    #shopsList {
+      padding: 10px;
+    }
+
+    label {
+      font-weight: bold;
+      display: block;
+      margin-bottom: 4px;
+    }
+  </style>
 </head>
 <body>
-  <h1>Register a Shop</h1>
-  <form id="shopForm">
-    <input type="text" id="shop_name" placeholder="Shop Name" required />
-    <input type="text" id="owner_name" placeholder="Owner Name" />
-    <input type="text" id="description" placeholder="Description" />
-    <input type="text" id="category" placeholder="Category" />
-    <input type="text" id="contact" placeholder="Contact Number" />
-    <input type="text" id="lat" placeholder="Latitude" required />
-    <input type="text" id="lng" placeholder="Longitude" required />
-    <input type="text" id="image_url" placeholder="Image URL" />
-    <button type="submit">Submit</button>
-  </form>
-  <pre id="logOutput"></pre>
+  <h1>ShopNearBuy</h1>
 
+  <div id="map"></div>
+
+  <div class="controls">
+    <input type="text" id="search" placeholder="Search by name or category..." />
+    <div id="addBtn">➕</div>
+  </div>
+
+  <div id="addForm" style="display: none;">
+    <label for="shopName">Shop Name</label>
+    <input type="text" id="shopName" required />
+
+    <label for="ownerName">Owner Name</label>
+    <input type="text" id="ownerName" required />
+
+    <label for="shopCategory">Category</label>
+    <select id="shopCategory" required>
+      <option value="">Select Category</option>
+      <option>Grocery</option>
+      <option>Restaurant</option>
+      <option>Salon</option>
+      <option>Medical</option>
+      <option>Electronics</option>
+      <option>Other</option>
+    </select>
+
+    <label for="description">Description</label>
+    <textarea id="description" required></textarea>
+
+    <label for="camera">Shop Photo</label>
+    <video id="camera" autoplay playsinline width="100%" style="max-height: 200px; border-radius: 10px;"></video>
+    <button type="button" onclick="capturePhoto()">📸 Capture Photo</button>
+    <canvas id="canvas" style="display: none;"></canvas>
+    <img id="preview" class="preview" alt="Captured image" />
+
+    <label for="contact">Contact Number (Optional)</label>
+    <input type="text" id="contact" />
+
+    <button onclick="saveShop()">Save Shop</button>
+  </div>
+
+  <div id="shopsList"></div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
