@@ -1,67 +1,34 @@
 body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: #f4f4f4;
+  font-family: Arial;
   text-align: center;
+  background: #f0f0f0;
+  padding: 20px;
 }
 
-#map {
-  height: 300px;
-  margin: 10px;
-  border-radius: 10px;
-}
-
-h1 {
-  background: #28a745;
-  color: white;
-  padding: 10px;
-  margin: 0;
-}
-
-.controls {
-  margin: 10px;
-}
-
-#addForm {
-  display: none;
-  margin: 10px;
-  background: #fff;
-  padding: 10px;
-  border-radius: 10px;
-  box-shadow: 0 0 5px #ccc;
-}
-
-input, textarea, select {
-  width: 90%;
-  padding: 8px;
-  margin: 5px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-}
-
-.shop {
-  background: white;
-  margin: 10px;
-  padding: 10px;
-  border-radius: 10px;
-  box-shadow: 0 0 5px #ccc;
+form {
+  display: inline-block;
   text-align: left;
-}
-
-img.preview {
-  max-width: 100%;
-  height: 150px;
+  padding: 20px;
+  background: white;
   border-radius: 10px;
-  margin-top: 5px;
+  box-shadow: 0 0 10px gray;
 }
 
-#addBtn {
-  font-size: 30px;
-  cursor: pointer;
-  margin: 10px;
+input, button {
+  display: block;
+  width: 300px;
+  margin: 10px 0;
+  padding: 10px;
 }
 
-#search {
-  width: 90%;
-  margin-bottom: 10px;
+pre {
+  text-align: left;
+  background: #222;
+  color: #0f0;
+  padding: 10px;
+  max-width: 600px;
+  margin: 20px auto;
+  border-radius: 5px;
+  font-size: 14px;
+  overflow-x: auto;
 }
