@@ -1,179 +1,162 @@
-// Supabase initialization
-const SUPABASE_URL = 'https://jhedjiolhqdxmqjknipz.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpoZWRqaW9saHFkeG1xamtuaXB6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM1MzUzMjcsImV4cCI6MjA2OTExMTMyN30.z5aYCuIHuUb_GXqbGO8rMki-36f7SYT0PVAUeMvcS0Q';
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// --- Supabase Config ---
+const SUPABASE_URL = "https://jhedjiolhqdxmqjknipz.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let map;
-const preview = document.getElementById('preview');
-const addForm = document.getElementById('addForm');
-const addBtn = document.getElementById('addBtn');
-const video = document.getElementById('camera');
-const canvas = document.getElementById('canvas');
-const shopsList = document.getElementById('shopsList');
-let stream;
+// --- UI Elements ---
+const map = L.map("map").setView([12.9716, 77.5946], 13);
+const shopsList = document.getElementById("shopsList");
+const preview = document.getElementById("preview");
+const addBtn = document.getElementById("addBtn");
+const addForm = document.getElementById("addForm");
 
-// Initialize map using user's current location
-function initMap() {
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      position => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        map = L.map('map').setView([lat, lng], 15);
+// --- Load Map ---
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  attribution: "© OpenStreetMap",
+}).addTo(map);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '© OpenStreetMap'
-        }).addTo(map);
-
-        L.marker([lat, lng]).addTo(map).bindPopup('You are here').openPopup();
-        loadShops();
-      },
-      error => {
-        alert("Location access denied. Using default location.");
-        fallbackMap();
-      }
-    );
-  } else {
-    alert("Geolocation not supported.");
-    fallbackMap();
+// --- Get User Location ---
+navigator.geolocation.getCurrentPosition(
+  (pos) => {
+    map.setView([pos.coords.latitude, pos.coords.longitude], 15);
+  },
+  () => {
+    console.warn("Using default location.");
   }
-}
+);
 
-function fallbackMap() {
-  const lat = 12.9716;
-  const lng = 77.5946;
-  map = L.map('map').setView([lat, lng], 13);
-
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap'
-  }).addTo(map);
-
-  loadShops();
-}
-
-// Start camera
-async function startCamera() {
+// --- Load Shops from Supabase ---
+async function loadShops() {
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-    video.srcObject = stream;
+    const { data, error } = await client.from("shops").select("*");
+    if (error) throw error;
+
+    data.forEach((shop) => {
+      L.marker([shop.lat, shop.lng])
+        .addTo(map)
+        .bindPopup(`<b>${shop.shop_name}</b><br>${shop.category}`);
+
+      const item = document.createElement("div");
+      item.className = "shop-card";
+      item.innerHTML = `
+        <h3>${shop.shop_name}</h3>
+        <p><b>Owner:</b> ${shop.owner_name}</p>
+        <p><b>Category:</b> ${shop.category}</p>
+        <p><b>Contact:</b> ${shop.contact || "N/A"}</p>
+        <p>${shop.description}</p>
+        ${shop.image_url ? `<img src="${shop.image_url}" class="preview" />` : ""}
+        <hr>
+      `;
+      shopsList.appendChild(item);
+    });
   } catch (err) {
-    alert('Camera access denied or not available.');
-    console.error(err);
+    console.error("Error loading shops:", err.message);
+    // Still allow map and page to function
   }
 }
 
-// Capture photo
+// --- Add Shop Button ---
+addBtn.addEventListener("click", () => {
+  addForm.style.display = addForm.style.display === "block" ? "none" : "block";
+});
+
+// --- Camera Access ---
+const video = document.getElementById("camera");
+navigator.mediaDevices.getUserMedia({ video: true })
+  .then((stream) => {
+    video.srcObject = stream;
+  })
+  .catch((err) => {
+    console.warn("Camera unavailable:", err.message);
+  });
+
+let capturedImage = null;
 function capturePhoto() {
-  const ctx = canvas.getContext('2d');
+  const canvas = document.getElementById("canvas");
+  const context = canvas.getContext("2d");
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
-  ctx.drawImage(video, 0, 0);
-  const dataURL = canvas.toDataURL('image/jpeg');
-  preview.src = dataURL;
+  context.drawImage(video, 0, 0);
+  capturedImage = canvas.toDataURL("image/jpeg");
+  preview.src = capturedImage;
+  preview.style.display = "block";
 }
 
-// Toggle form
-addBtn.addEventListener('click', () => {
-  const isVisible = addForm.style.display === 'block';
-  addForm.style.display = isVisible ? 'none' : 'block';
-  if (!isVisible) startCamera();
-});
-
-// Save shop to Supabase with schema-compliant fields
+// --- Save Shop to Supabase ---
 async function saveShop() {
-  const name = document.getElementById('shopName').value.trim();
-  const owner = document.getElementById('ownerName').value.trim();
-  const desc = document.getElementById('description').value.trim();
-  const category = document.getElementById('shopCategory').value;
-  const contact = document.getElementById('contact').value.trim();
-  const imageDataUrl = preview.src;
+  const shopName = document.getElementById("shopName").value;
+  const ownerName = document.getElementById("ownerName").value;
+  const category = document.getElementById("shopCategory").value;
+  const description = document.getElementById("description").value;
+  const contact = document.getElementById("contact").value;
 
-  if (!name || !owner || !desc || !category || !imageDataUrl) {
-    alert("Please fill all required fields and capture a photo.");
+  if (!shopName || !ownerName || !category || !description) {
+    alert("Please fill all required fields.");
     return;
   }
 
-  navigator.geolocation.getCurrentPosition(async pos => {
-    const lat = pos.coords.latitude;
-    const lng = pos.coords.longitude;
+  let lat = null, lng = null;
+  try {
+    const position = await new Promise((res, rej) => {
+      navigator.geolocation.getCurrentPosition(res, rej);
+    });
+    lat = position.coords.latitude;
+    lng = position.coords.longitude;
+  } catch {
+    alert("Location not available.");
+    return;
+  }
 
-    const { error } = await supabase.from('shops').insert([{
-      shop_name: name,
-      owner_name: owner,
-      description: desc,
-      category: category,
-      contact: contact,
-      lat: lat,
-      lng: lng,
-      image_url: imageDataUrl
-    }]);
+  let image_url = null;
 
-    if (error) {
-      console.error("Insert error:", error.message);
-      alert("Failed to save shop.");
-    } else {
-      alert("Shop added successfully!");
-      loadShops();
-      addForm.reset();
-      preview.src = '';
-      addForm.style.display = 'none';
-      if (stream) stream.getTracks().forEach(track => track.stop());
+  if (capturedImage) {
+    const fileName = `shop-${Date.now()}.jpg`;
+    const file = dataURLtoFile(capturedImage, fileName);
+    const { data, error: uploadError } = await client.storage
+      .from("shops")
+      .upload(fileName, file, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: "image/jpeg",
+      });
+    if (uploadError) console.error(uploadError.message);
+    else {
+      const { publicURL } = client.storage.from("shops").getPublicUrl(fileName);
+      image_url = publicURL;
     }
-  });
-}
+  }
 
-// Load shops from DB
-async function loadShops() {
-  const { data, error } = await supabase
-    .from('shops')
-    .select('*')
-    .order('created_at', { ascending: false });
+  const { error } = await client.from("shops").insert([
+    {
+      shop_name: shopName,
+      owner_name: ownerName,
+      category,
+      description,
+      contact,
+      lat,
+      lng,
+      image_url,
+    },
+  ]);
 
   if (error) {
-    console.error("Error loading shops:", error.message);
-    return;
+    alert("Failed to save shop: " + error.message);
+  } else {
+    alert("Shop saved!");
+    location.reload();
   }
-
-  renderShops(data);
 }
 
-// Render shops on page and map
-function renderShops(shops) {
-  shopsList.innerHTML = '';
-  shops.forEach(shop => {
-    const div = document.createElement('div');
-    div.className = 'shop';
-    div.innerHTML = `
-      <h3>${shop.shop_name} (${shop.category})</h3>
-      <p><strong>Owner:</strong> ${shop.owner_name}</p>
-      <p>${shop.description}</p>
-      ${shop.contact ? `<p><strong>Contact:</strong> ${shop.contact}</p>` : ''}
-      <img class="preview" src="${shop.image_url}" alt="Shop Image" />
-      <p style="font-size: 0.8em; color: gray;">Added on: ${new Date(shop.created_at).toLocaleString()}</p>
-    `;
-    shopsList.appendChild(div);
-
-    if (map && shop.lat && shop.lng) {
-      L.marker([shop.lat, shop.lng]).addTo(map)
-        .bindPopup(`<b>${shop.shop_name}</b><br>${shop.description}`);
-    }
-  });
+// --- Convert Base64 to File ---
+function dataURLtoFile(dataurl, filename) {
+  let arr = dataurl.split(",");
+  let mime = arr[0].match(/:(.*?);/)[1];
+  let bstr = atob(arr[1]);
+  let n = bstr.length;
+  let u8arr = new Uint8Array(n);
+  while (n--) u8arr[n] = bstr.charCodeAt(n);
+  return new File([u8arr], filename, { type: mime });
 }
 
-// Search
-document.getElementById('search').addEventListener('input', async e => {
-  const q = e.target.value.toLowerCase();
-  const { data, error } = await supabase.from('shops').select('*');
-  if (!error) {
-    const filtered = data.filter(s =>
-      s.shop_name.toLowerCase().includes(q) ||
-      s.category.toLowerCase().includes(q)
-    );
-    renderShops(filtered);
-  }
-});
-
-// Load on window ready
-window.onload = () => {
-  initMap();
-};
+// --- Init ---
+loadShops();
