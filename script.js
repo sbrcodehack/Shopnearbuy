@@ -1,162 +1,95 @@
-let map;
-const preview = document.getElementById('preview');
-const addForm = document.getElementById('addForm');
-const addBtn = document.getElementById('addBtn');
-const video = document.getElementById('camera');
-const canvas = document.getElementById('canvas');
-const shopsList = document.getElementById('shopsList');
-let stream;
+// Supabase config
+const supabase = supabase.createClient(
+  'https://jhedjiolhqdxmqjknipz.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpoZWRqaW9saHFkeG1xamtuaXB6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM1MzUzMjcsImV4cCI6MjA2OTExMTMyN30.z5aYCuIHuUb_GXqbGO8rMki-36f7SYT0PVAUeMvcS0Q'
+);
 
-// Initialize map using user's current location
-function initMap() {
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      position => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        map = L.map('map').setView([lat, lng], 15);
+let map = L.map('map').setView([20.59, 78.96], 5); // Default India
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '© OpenStreetMap'
-        }).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap'
+}).addTo(map);
 
-        L.marker([lat, lng]).addTo(map).bindPopup('You are here').openPopup();
+// Get user location
+navigator.geolocation.getCurrentPosition(pos => {
+  const { latitude, longitude } = pos.coords;
+  map.setView([latitude, longitude], 15);
+  L.marker([latitude, longitude]).addTo(map).bindPopup("You are here").openPopup();
+}, () => alert("Location not allowed"));
 
-        const savedShops = JSON.parse(localStorage.getItem('shops') || '[]');
-        renderShops(savedShops.length ? savedShops : demoShops);
-      },
-      error => {
-        alert("Location access denied. Using default location.");
-        fallbackMap();
-      }
-    );
-  } else {
-    alert("Geolocation not supported.");
-    fallbackMap();
-  }
-}
+// Camera setup
+const camera = document.getElementById("camera");
+const snapshot = document.getElementById("snapshot");
+const captureBtn = document.getElementById("captureBtn");
+let capturedImage = null;
 
-// Fallback if user denies location
-function fallbackMap() {
-  const lat = 12.9716;
-  const lng = 77.5946;
-  map = L.map('map').setView([lat, lng], 13);
-
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap'
-  }).addTo(map);
-
-  const savedShops = JSON.parse(localStorage.getItem('shops') || '[]');
-  renderShops(savedShops.length ? savedShops : demoShops);
-}
-
-async function startCamera() {
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-    video.srcObject = stream;
-  } catch (err) {
-    alert('Camera access denied or not available.');
-    console.error(err);
-  }
-}
-
-function capturePhoto() {
-  const ctx = canvas.getContext('2d');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  ctx.drawImage(video, 0, 0);
-  const dataURL = canvas.toDataURL('image/jpeg');
-  preview.src = dataURL;
-}
-
-addBtn.addEventListener('click', () => {
-  const isVisible = addForm.style.display === 'block';
-  addForm.style.display = isVisible ? 'none' : 'block';
-  if (!isVisible) startCamera();
+navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then(stream => {
+  camera.srcObject = stream;
 });
 
-const demoShops = [
-  {
-    shopName: "Krishna Grocery",
-    ownerName: "Ravi Kumar",
-    category: "Grocery",
-    description: "Fresh fruits and vegetables daily.",
-    image: "https://via.placeholder.com/150",
-    contact: "9876543210",
-    lat: 12.9716,
-    lng: 77.5946
-  },
-  {
-    shopName: "Star Salon",
-    ownerName: "Priya Mehra",
-    category: "Salon",
-    description: "Affordable haircuts and beauty treatments.",
-    image: "https://via.placeholder.com/150",
-    contact: "9988776655",
-    lat: 12.9736,
-    lng: 77.5966
-  }
-];
-
-function renderShops(shops) {
-  shopsList.innerHTML = '';
-  shops.forEach(shop => {
-    let div = document.createElement('div');
-    div.className = 'shop';
-    div.innerHTML = `
-      <h3>${shop.shopName} (${shop.category})</h3>
-      <p><strong>Owner:</strong> ${shop.ownerName}</p>
-      <p>${shop.description}</p>
-      ${shop.contact ? `<p><strong>Contact:</strong> ${shop.contact}</p>` : ''}
-      <img class="preview" src="${shop.image}" alt="Shop Image" />
-    `;
-    shopsList.appendChild(div);
-    if (shop.lat && shop.lng) {
-      L.marker([shop.lat, shop.lng]).addTo(map)
-        .bindPopup(`<b>${shop.shopName}</b><br>${shop.description}`);
-    }
-  });
-}
-
-function saveShop() {
-  const name = document.getElementById('shopName').value.trim();
-  const owner = document.getElementById('ownerName').value.trim();
-  const desc = document.getElementById('description').value.trim();
-  const category = document.getElementById('shopCategory').value;
-  const contact = document.getElementById('contact').value.trim();
-  const image = preview.src;
-
-  if (!name || !owner || !desc || !category || !image) {
-    alert("Please fill all required fields and capture a photo.");
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(pos => {
-    const lat = pos.coords.latitude;
-    const lng = pos.coords.longitude;
-    const newShop = { shopName: name, ownerName: owner, description: desc, category, contact, image, lat, lng };
-    const shops = JSON.parse(localStorage.getItem('shops') || '[]');
-    shops.push(newShop);
-    localStorage.setItem('shops', JSON.stringify(shops));
-    renderShops(shops);
-    addForm.reset();
-    preview.src = '';
-    addForm.style.display = 'none';
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-    }
-  });
-}
-
-document.getElementById('search').addEventListener('input', e => {
-  const q = e.target.value.toLowerCase();
-  const allShops = JSON.parse(localStorage.getItem('shops') || '[]').concat(demoShops);
-  const filtered = allShops.filter(s =>
-    s.shopName.toLowerCase().includes(q) || s.category.toLowerCase().includes(q)
-  );
-  renderShops(filtered);
-});
-
-window.onload = () => {
-  initMap();
+captureBtn.onclick = () => {
+  snapshot.width = camera.videoWidth;
+  snapshot.height = camera.videoHeight;
+  snapshot.getContext('2d').drawImage(camera, 0, 0);
+  capturedImage = snapshot.toDataURL("image/png");
+  alert("Image captured");
 };
+
+// Toggle form
+document.getElementById("toggleFormBtn").onclick = () => {
+  const form = document.getElementById("formContainer");
+  form.style.display = form.style.display === "none" ? "block" : "none";
+};
+
+// Save shop
+document.getElementById("addForm").onsubmit = async e => {
+  e.preventDefault();
+  const shop = {
+    name: document.getElementById("shopName").value,
+    owner: document.getElementById("ownerName").value,
+    desc: document.getElementById("desc").value,
+    contact: document.getElementById("contact").value,
+    category: document.getElementById("category").value,
+    image_url: '',
+    lat: map.getCenter().lat,
+    lng: map.getCenter().lng
+  };
+
+  // Upload image if captured
+  if (capturedImage) {
+    const blob = await (await fetch(capturedImage)).blob();
+    const fileName = `shop_${Date.now()}.png`;
+    const { data, error } = await supabase.storage
+      .from('images')
+      .upload(fileName, blob, { contentType: 'image/png' });
+
+    if (!error) {
+      const { data: pubUrl } = supabase.storage
+        .from('images')
+        .getPublicUrl(fileName);
+      shop.image_url = pubUrl.publicUrl;
+    }
+  }
+
+  // Save to Supabase
+  await supabase.from('shops').insert([shop]);
+  alert("Shop saved!");
+  location.reload();
+};
+
+// Load all shops
+async function loadShops() {
+  const { data: shops } = await supabase.from('shops').select('*');
+
+  document.getElementById("shopList").innerHTML = "";
+
+  shops.forEach(s => {
+    const li = document.createElement("li");
+    li.innerHTML = `<b>${s.name}</b> (${s.category})<br>${s.desc}<br>${s.owner}<br><img src="${s.image_url}" width="100"/>`;
+    document.getElementById("shopList").appendChild(li);
+
+    L.marker([s.lat, s.lng]).addTo(map).bindPopup(`${s.name}<br>${s.category}`);
+  });
+}
+
+loadShops();
