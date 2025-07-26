@@ -18,6 +18,12 @@
   </div>
 
   <div id="addForm">
+
+    <video id="camera" autoplay playsinline width="100%" style="max-height: 200px; border-radius: 10px;"></video>
+    <button type="button" onclick="capturePhoto()">📸 Capture Photo</button>
+    <canvas id="canvas" style="display: none;"></canvas>
+    <img id="preview" class="preview" alt="Captured image" />
+    
     <input type="text" id="shopName" placeholder="Shop Name" required />
     <input type="text" id="ownerName" placeholder="Owner Name" required />
     <select id="shopCategory">
@@ -31,11 +37,7 @@
     </select>
     <textarea id="description" placeholder="Shop Description" required></textarea>
 
-    <video id="camera" autoplay playsinline width="100%" style="max-height: 200px; border-radius: 10px;"></video>
-    <button type="button" onclick="capturePhoto()">📸 Capture Photo</button>
-    <canvas id="canvas" style="display: none;"></canvas>
-    <img id="preview" class="preview" alt="Captured image" />
-
+    
     <input type="text" id="contact" placeholder="Contact Number (optional)" />
     <button onclick="saveShop()">Save Shop</button>
   </div>
