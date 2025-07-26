@@ -1,95 +1,60 @@
+const form = document.getElementById('shopForm');
+const logOutput = document.getElementById('logOutput');
+
 // Supabase config
-const supabase = supabase.createClient(
-  'https://jhedjiolhqdxmqjknipz.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpoZWRqaW9saHFkeG1xamtuaXB6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM1MzUzMjcsImV4cCI6MjA2OTExMTMyN30.z5aYCuIHuUb_GXqbGO8rMki-36f7SYT0PVAUeMvcS0Q'
-);
+const SUPABASE_URL = 'https://jhedjiolhqdxmqjknipz.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpoZWRqaW9saHFkeG1xamtuaXB6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM1MzUzMjcsImV4cCI6MjA2OTExMTMyN30.z5aYCuIHuUb_GXqbGO8rMki-36f7SYT0PVAUeMvcS0Q';
 
-let map = L.map('map').setView([20.59, 78.96], 5); // Default India
-
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© OpenStreetMap'
-}).addTo(map);
-
-// Get user location
-navigator.geolocation.getCurrentPosition(pos => {
-  const { latitude, longitude } = pos.coords;
-  map.setView([latitude, longitude], 15);
-  L.marker([latitude, longitude]).addTo(map).bindPopup("You are here").openPopup();
-}, () => alert("Location not allowed"));
-
-// Camera setup
-const camera = document.getElementById("camera");
-const snapshot = document.getElementById("snapshot");
-const captureBtn = document.getElementById("captureBtn");
-let capturedImage = null;
-
-navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then(stream => {
-  camera.srcObject = stream;
-});
-
-captureBtn.onclick = () => {
-  snapshot.width = camera.videoWidth;
-  snapshot.height = camera.videoHeight;
-  snapshot.getContext('2d').drawImage(camera, 0, 0);
-  capturedImage = snapshot.toDataURL("image/png");
-  alert("Image captured");
+const headers = {
+  apikey: SUPABASE_KEY,
+  Authorization: `Bearer ${SUPABASE_KEY}`,
+  'Content-Type': 'application/json',
 };
 
-// Toggle form
-document.getElementById("toggleFormBtn").onclick = () => {
-  const form = document.getElementById("formContainer");
-  form.style.display = form.style.display === "none" ? "block" : "none";
-};
-
-// Save shop
-document.getElementById("addForm").onsubmit = async e => {
-  e.preventDefault();
-  const shop = {
-    name: document.getElementById("shopName").value,
-    owner: document.getElementById("ownerName").value,
-    desc: document.getElementById("desc").value,
-    contact: document.getElementById("contact").value,
-    category: document.getElementById("category").value,
-    image_url: '',
-    lat: map.getCenter().lat,
-    lng: map.getCenter().lng
-  };
-
-  // Upload image if captured
-  if (capturedImage) {
-    const blob = await (await fetch(capturedImage)).blob();
-    const fileName = `shop_${Date.now()}.png`;
-    const { data, error } = await supabase.storage
-      .from('images')
-      .upload(fileName, blob, { contentType: 'image/png' });
-
-    if (!error) {
-      const { data: pubUrl } = supabase.storage
-        .from('images')
-        .getPublicUrl(fileName);
-      shop.image_url = pubUrl.publicUrl;
-    }
-  }
-
-  // Save to Supabase
-  await supabase.from('shops').insert([shop]);
-  alert("Shop saved!");
-  location.reload();
-};
-
-// Load all shops
-async function loadShops() {
-  const { data: shops } = await supabase.from('shops').select('*');
-
-  document.getElementById("shopList").innerHTML = "";
-
-  shops.forEach(s => {
-    const li = document.createElement("li");
-    li.innerHTML = `<b>${s.name}</b> (${s.category})<br>${s.desc}<br>${s.owner}<br><img src="${s.image_url}" width="100"/>`;
-    document.getElementById("shopList").appendChild(li);
-
-    L.marker([s.lat, s.lng]).addTo(map).bindPopup(`${s.name}<br>${s.category}`);
-  });
+function log(message) {
+  console.log(message);
+  logOutput.textContent += `\n${typeof message === 'object' ? JSON.stringify(message, null, 2) : message}`;
 }
 
-loadShops();
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const shop = {
+    shop_name: document.getElementById('shop_name').value,
+    owner_name: document.getElementById('owner_name').value,
+    description: document.getElementById('description').value,
+    category: document.getElementById('category').value,
+    contact: document.getElementById('contact').value,
+    lat: parseFloat(document.getElementById('lat').value),
+    lng: parseFloat(document.getElementById('lng').value),
+    image_url: document.getElementById('image_url').value
+  };
+
+  log('📥 Form Data Collected:');
+  log(shop);
+
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/shops`, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(shop)
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      log('✅ Data inserted into DB:');
+      log(data);
+      alert("Shop saved successfully!");
+      form.reset();
+    } else {
+      log('❌ Error from Supabase:');
+      log(data);
+      alert("Error saving shop.");
+    }
+  } catch (error) {
+    log('🚨 Exception while sending data:');
+    log(error);
+    alert("An error occurred.");
+  }
+});
