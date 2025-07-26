@@ -5,80 +5,65 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ShopNearBuy</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-
   <style>
     body {
-      margin: 0;
       font-family: Arial, sans-serif;
-      background: #f4f4f4;
       text-align: center;
+      margin: 0;
+      padding: 0;
     }
-
     #map {
       height: 300px;
       margin: 10px;
       border-radius: 10px;
     }
-
-    h1 {
-      background: #28a745;
-      color: white;
-      padding: 10px;
-      margin: 0;
-    }
-
     .controls {
       margin: 10px;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
     }
-
+    input, select, textarea, button {
+      display: block;
+      margin: 8px auto;
+      padding: 8px;
+      width: 90%;
+      max-width: 400px;
+      border-radius: 8px;
+    }
+    #addBtn {
+      font-size: 24px;
+      cursor: pointer;
+    }
     #addForm {
       display: none;
-      margin: 10px;
-      background: #fff;
+      background: #f9f9f9;
       padding: 10px;
+      margin: 10px auto;
       border-radius: 10px;
-      box-shadow: 0 0 5px #ccc;
-    }
-
-    input, textarea, select {
       width: 90%;
-      padding: 8px;
-      margin: 5px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
+      max-width: 400px;
     }
-
-    .shop {
-      background: white;
-      margin: 10px;
+    #shopsList {
+      margin-top: 20px;
+    }
+    .shop-card {
+      background: #e0e0e0;
+      margin: 10px auto;
       padding: 10px;
       border-radius: 10px;
-      box-shadow: 0 0 5px #ccc;
-      text-align: left;
+      max-width: 400px;
     }
-
-    img.preview {
-      max-width: 100%;
-      height: 150px;
+    .preview {
+      width: 100%;
+      max-height: 200px;
       border-radius: 10px;
       margin-top: 5px;
-    }
-
-    #addBtn {
-      font-size: 30px;
-      cursor: pointer;
-      margin: 10px;
-    }
-
-    #search {
-      width: 90%;
-      margin-bottom: 10px;
     }
   </style>
 </head>
 <body>
   <h1>ShopNearBuy</h1>
-
   <div id="map"></div>
 
   <div class="controls">
@@ -113,117 +98,148 @@
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    // Initialize map
-    let map = L.map('map').setView([12.9716, 77.5946], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap'
-    }).addTo(map);
+    const SUPABASE_URL = 'https://jhedjiolhqdxmqjknipz.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpoZWRqaW9saHFkeG1xamtuaXB6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM1MzUzMjcsImV4cCI6MjA2OTExMTMyN30.z5aYCuIHuUb_GXqbGO8rMki-36f7SYT0PVAUeMvcS0Q';
+    const headers = {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': 'application/json'
+    };
 
-    // Camera setup
+    let map = L.map('map').setView([20.5937, 78.9629], 5); // India center
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    let userLatLng = null;
+
+    navigator.geolocation.getCurrentPosition(pos => {
+      userLatLng = [pos.coords.latitude, pos.coords.longitude];
+      map.setView(userLatLng, 16);
+      L.marker(userLatLng).addTo(map).bindPopup("You are here").openPopup();
+    }, () => {
+      alert("Could not get location");
+    });
+
+    // Camera access
     const camera = document.getElementById('camera');
     const canvas = document.getElementById('canvas');
     const preview = document.getElementById('preview');
+    let capturedImage = '';
 
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => {
-        camera.srcObject = stream;
-      })
-      .catch(err => console.error('Camera error:', err));
+    navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+      camera.srcObject = stream;
+    });
 
     function capturePhoto() {
-      const ctx = canvas.getContext('2d');
+      const context = canvas.getContext('2d');
       canvas.width = camera.videoWidth;
       canvas.height = camera.videoHeight;
-      ctx.drawImage(camera, 0, 0, canvas.width, canvas.height);
-      preview.src = canvas.toDataURL('image/png');
+      context.drawImage(camera, 0, 0);
+      capturedImage = canvas.toDataURL('image/jpeg');
+      preview.src = capturedImage;
       preview.style.display = 'block';
     }
 
-    // Sample fallback data
-    const fallbackShops = [
-      {
-        name: "Local Grocery",
-        owner: "Ravi Kumar",
-        category: "Grocery",
-        description: "Fresh daily groceries available",
-        contact: "9876543210",
-        image: ""
-      },
-      {
-        name: "Mobile Repair",
-        owner: "Ankit Singh",
-        category: "Electronics",
-        description: "All types of mobile repair services",
-        contact: "",
-        image: ""
-      }
-    ];
+    // Add Shop Form Toggle
+    document.getElementById('addBtn').onclick = () => {
+      const form = document.getElementById('addForm');
+      form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    };
 
-    function renderShops(shops) {
-      const list = document.getElementById("shopsList");
-      list.innerHTML = "";
-      shops.forEach(shop => {
-        const div = document.createElement("div");
-        div.className = "shop";
-        div.innerHTML = `
-          <h3>${shop.name}</h3>
-          <p><strong>Owner:</strong> ${shop.owner}</p>
-          <p><strong>Category:</strong> ${shop.category}</p>
-          <p>${shop.description}</p>
-          ${shop.contact ? `<p><strong>Contact:</strong> ${shop.contact}</p>` : ""}
-          ${shop.image ? `<img class="preview" src="${shop.image}" />` : ""}
-        `;
-        list.appendChild(div);
-      });
-    }
+    async function saveShop() {
+      const shopName = document.getElementById('shopName').value;
+      const ownerName = document.getElementById('ownerName').value;
+      const description = document.getElementById('description').value;
+      const category = document.getElementById('shopCategory').value;
+      const contact = document.getElementById('contact').value;
 
-    function loadShops() {
-      try {
-        // Simulated fetch from DB or fallback
-        // Replace with real fetch if needed
-        renderShops(fallbackShops);
-      } catch (e) {
-        console.error("DB not available, showing fallback data", e);
-        renderShops(fallbackShops);
-      }
-    }
-
-    function saveShop() {
-      const name = document.getElementById("shopName").value;
-      const owner = document.getElementById("ownerName").value;
-      const category = document.getElementById("shopCategory").value;
-      const description = document.getElementById("description").value;
-      const contact = document.getElementById("contact").value;
-      const image = preview.src;
-
-      if (!name || !owner || !category || !description) {
-        alert("Please fill all required fields");
+      if (!shopName || !description || !category || !userLatLng) {
+        alert("Please fill required fields and allow location.");
         return;
       }
 
-      const shop = { name, owner, category, description, contact, image };
-      fallbackShops.push(shop);
-      renderShops(fallbackShops);
-      document.getElementById("addForm").reset();
-      preview.src = "";
-      document.getElementById("addForm").style.display = "none";
+      const { data, error } = await fetch(`${SUPABASE_URL}/rest/v1/shops`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          shop_name: shopName,
+          owner_name: ownerName,
+          description,
+          category,
+          contact,
+          lat: userLatLng[0],
+          lng: userLatLng[1],
+          image_url: capturedImage
+        })
+      }).then(res => res.json()).catch(err => {
+        console.log("Error saving shop:", err);
+      });
+
+      if (error) {
+        alert("Failed to save shop.");
+      } else {
+        alert("Shop saved successfully!");
+        loadShops();
+        document.getElementById('addForm').reset();
+        preview.style.display = 'none';
+      }
     }
 
-    document.getElementById("addBtn").onclick = () => {
-      const form = document.getElementById("addForm");
-      form.style.display = form.style.display === "none" ? "block" : "none";
-    };
+    async function loadShops() {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/shops?select=*`, { headers });
+        const shops = await res.json();
+        const list = document.getElementById('shopsList');
+        list.innerHTML = '';
 
-    document.getElementById("search").oninput = function () {
-      const value = this.value.toLowerCase();
-      const filtered = fallbackShops.filter(shop =>
-        shop.name.toLowerCase().includes(value) ||
-        shop.category.toLowerCase().includes(value)
+        shops.forEach(shop => {
+          if (shop.lat && shop.lng) {
+            L.marker([shop.lat, shop.lng]).addTo(map).bindPopup(shop.shop_name);
+          }
+
+          list.innerHTML += `
+            <div class="shop-card">
+              <h3>${shop.shop_name}</h3>
+              <p><strong>Owner:</strong> ${shop.owner_name}</p>
+              <p><strong>Category:</strong> ${shop.category}</p>
+              <p>${shop.description}</p>
+              ${shop.contact ? `<p><strong>Contact:</strong> ${shop.contact}</p>` : ""}
+              ${shop.image_url ? `<img class="preview" src="${shop.image_url}" alt="Shop Image"/>` : ""}
+            </div>
+          `;
+        });
+      } catch (e) {
+        console.warn("Could not load shops. Check internet or Supabase.");
+      }
+    }
+
+    window.onload = loadShops;
+
+    // Search functionality
+    document.getElementById('search').addEventListener('input', async function () {
+      const query = this.value.toLowerCase();
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/shops?select=*`, { headers });
+      const shops = await res.json();
+
+      const filtered = shops.filter(shop =>
+        shop.shop_name.toLowerCase().includes(query) ||
+        shop.category.toLowerCase().includes(query)
       );
-      renderShops(filtered);
-    };
 
-    loadShops();
+      const list = document.getElementById('shopsList');
+      list.innerHTML = '';
+      filtered.forEach(shop => {
+        list.innerHTML += `
+          <div class="shop-card">
+            <h3>${shop.shop_name}</h3>
+            <p><strong>Owner:</strong> ${shop.owner_name}</p>
+            <p><strong>Category:</strong> ${shop.category}</p>
+            <p>${shop.description}</p>
+            ${shop.contact ? `<p><strong>Contact:</strong> ${shop.contact}</p>` : ""}
+            ${shop.image_url ? `<img class="preview" src="${shop.image_url}" alt="Shop Image"/>` : ""}
+          </div>
+        `;
+      });
+    });
   </script>
 </body>
 </html>
