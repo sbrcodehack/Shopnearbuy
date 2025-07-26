@@ -1,150 +1,218 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Shop Near Buy</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ShopNearBuy</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f5f5f5; }
-    header { background: #2196f3; color: white; padding: 15px; text-align: center; font-size: 22px; }
-    #map { height: 300px; width: 100%; }
-    form, #shopList { padding: 15px; background: white; }
-    input, textarea, button { width: 100%; margin-bottom: 10px; padding: 10px; font-size: 16px; }
-    button { background: #4CAF50; color: white; border: none; cursor: pointer; }
-    button:hover { background: #45a049; }
-    .shop-card { background: #e0f7fa; margin: 10px 0; padding: 10px; border-radius: 5px; }
-    .shop-card img { width: 100px; height: auto; margin-top: 5px; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      text-align: center;
+    }
+
+    #map {
+      height: 300px;
+      margin: 10px;
+      border-radius: 10px;
+    }
+
+    h1 {
+      background: #28a745;
+      color: white;
+      padding: 10px;
+      margin: 0;
+    }
+
+    .controls {
+      margin: 10px;
+    }
+
+    #addForm {
+      display: none;
+      margin: 10px;
+      background: #fff;
+      padding: 10px;
+      border-radius: 10px;
+      box-shadow: 0 0 5px #ccc;
+    }
+
+    input, textarea, select {
+      width: 90%;
+      padding: 8px;
+      margin: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    .shop {
+      background: white;
+      margin: 10px;
+      padding: 10px;
+      border-radius: 10px;
+      box-shadow: 0 0 5px #ccc;
+      text-align: left;
+    }
+
+    img.preview {
+      max-width: 100%;
+      height: 150px;
+      border-radius: 10px;
+      margin-top: 5px;
+    }
+
+    #addBtn {
+      font-size: 30px;
+      cursor: pointer;
+      margin: 10px;
+    }
+
+    #search {
+      width: 90%;
+      margin-bottom: 10px;
+    }
   </style>
 </head>
 <body>
-  <header>Shop Near Buy</header>
+  <h1>ShopNearBuy</h1>
+
   <div id="map"></div>
 
-  <form id="shopForm">
-    <label for="image" style="display:inline-block; padding:10px 15px; background:#007BFF; color:white; border-radius:5px; cursor:pointer;">
-  📷 Capture Photo
-</label>
-<input type="file" id="image" accept="image/*" capture="environment" required style="display:none;">
-    <img id="preview" style="width:100px; display:none;"/>
-    
-    <input type="text" id="shopName" placeholder="Shop Name" required>
-    <input type="text" id="ownerName" placeholder="Owner Name" required>
-    <textarea id="description" placeholder="Short Description" required></textarea>
-    <input type="tel" id="contact" placeholder="Contact Number (Optional)">
-    <input type="hidden" id="latitude">
-    <input type="hidden" id="longitude">
-    <button type="submit">Add Shop</button>
-  </form>
-
-  <div id="shopList">
-    <h3>Added Shops:</h3>
-    <div id="shops"></div>
+  <div class="controls">
+    <input type="text" id="search" placeholder="Search by name or category..." />
+    <div id="addBtn">➕</div>
   </div>
 
-  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-  <script>
-    let map = L.map('map').setView([20.5937, 78.9629], 5); // Default: India center
+  <div id="addForm">
+    <input type="text" id="shopName" placeholder="Shop Name" required />
+    <input type="text" id="ownerName" placeholder="Owner Name" required />
+    <select id="shopCategory">
+      <option value="">Select Category</option>
+      <option>Grocery</option>
+      <option>Restaurant</option>
+      <option>Salon</option>
+      <option>Medical</option>
+      <option>Electronics</option>
+      <option>Other</option>
+    </select>
+    <textarea id="description" placeholder="Shop Description" required></textarea>
+    <input type="file" accept="image/*" capture="environment" id="photo" />
+    <img id="preview" class="preview" />
+    <input type="text" id="contact" placeholder="Contact Number (optional)" />
+    <button onclick="saveShop()">Save Shop</button>
+  </div>
 
-    // Add OpenStreetMap layer
+  <div id="shopsList"></div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    let map = L.map('map').setView([12.9716, 77.5946], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19
+      attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    // Preview image
-    const imgInput = document.getElementById('image');
     const preview = document.getElementById('preview');
-    imgInput.addEventListener('change', function() {
-      const file = imgInput.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = e => {
-          preview.src = e.target.result;
-          preview.style.display = 'block';
-        };
-        reader.readAsDataURL(file);
-      }
+    const addForm = document.getElementById('addForm');
+    const addBtn = document.getElementById('addBtn');
+
+    addBtn.addEventListener('click', () => {
+      addForm.style.display = addForm.style.display === 'none' ? 'block' : 'none';
     });
 
-    // Add default demo shops
+    document.getElementById('photo').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = () => preview.src = reader.result;
+      if (file) reader.readAsDataURL(file);
+    });
+
     const demoShops = [
       {
-        name: "Fresh Veggies",
-        owner: "Raj Kumar",
-        description: "Best organic vegetables.",
+        shopName: "Krishna Grocery",
+        ownerName: "Ravi Kumar",
+        category: "Grocery",
+        description: "Fresh fruits and vegetables daily.",
+        image: "https://via.placeholder.com/150",
         contact: "9876543210",
-        lat: 28.6139,
-        lng: 77.2090
+        lat: 12.9716,
+        lng: 77.5946
       },
       {
-        name: "ElectroMart",
-        owner: "Neha Sharma",
-        description: "All electronic gadgets available.",
+        shopName: "Star Salon",
+        ownerName: "Priya Mehra",
+        category: "Salon",
+        description: "Affordable haircuts and beauty treatments.",
+        image: "https://via.placeholder.com/150",
         contact: "9988776655",
-        lat: 19.0760,
-        lng: 72.8777
+        lat: 12.9736,
+        lng: 77.5966
       }
     ];
 
-    function displayShop(shop) {
-      const div = document.createElement('div');
-      div.className = 'shop-card';
-      div.innerHTML = `
-        <strong>${shop.name}</strong><br>
-        Owner: ${shop.owner}<br>
-        ${shop.description}<br>
-        Contact: ${shop.contact || "N/A"}<br>
-        ${shop.image ? `<img src="${shop.image}" alt="shop">` : ""}
-      `;
-      document.getElementById('shops').appendChild(div);
+    const shopsList = document.getElementById('shopsList');
 
-      if (shop.lat && shop.lng) {
-        L.marker([shop.lat, shop.lng])
-          .addTo(map)
-          .bindPopup(`<b>${shop.name}</b><br>${shop.description}`);
-      }
+    function renderShops(shops) {
+      shopsList.innerHTML = '';
+      shops.forEach(shop => {
+        let div = document.createElement('div');
+        div.className = 'shop';
+        div.innerHTML = `
+          <h3>${shop.shopName} (${shop.category})</h3>
+          <p><strong>Owner:</strong> ${shop.ownerName}</p>
+          <p>${shop.description}</p>
+          ${shop.contact ? `<p><strong>Contact:</strong> ${shop.contact}</p>` : ''}
+          <img class="preview" src="${shop.image}" alt="Shop Image" />
+        `;
+        shopsList.appendChild(div);
+        if (shop.lat && shop.lng) {
+          L.marker([shop.lat, shop.lng]).addTo(map)
+            .bindPopup(`<b>${shop.shopName}</b><br>${shop.description}`);
+        }
+      });
     }
 
-    // Load from localStorage
-    const saved = JSON.parse(localStorage.getItem("shops") || "[]");
-    [...demoShops, ...saved].forEach(displayShop);
+    function saveShop() {
+      const name = document.getElementById('shopName').value.trim();
+      const owner = document.getElementById('ownerName').value.trim();
+      const desc = document.getElementById('description').value.trim();
+      const category = document.getElementById('shopCategory').value;
+      const contact = document.getElementById('contact').value.trim();
+      const image = preview.src;
 
-    // Capture current location
-    navigator.geolocation.getCurrentPosition(position => {
-      const lat = position.coords.latitude;
-      const lng = position.coords.longitude;
-      document.getElementById('latitude').value = lat;
-      document.getElementById('longitude').value = lng;
-      map.setView([lat, lng], 15);
-      L.marker([lat, lng]).addTo(map).bindPopup("You are here").openPopup();
+      if (!name || !owner || !desc || !category || !image) {
+        alert("Please fill all required fields and capture a photo.");
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(pos => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const newShop = { shopName: name, ownerName: owner, description: desc, category, contact, image, lat, lng };
+        const shops = JSON.parse(localStorage.getItem('shops') || '[]');
+        shops.push(newShop);
+        localStorage.setItem('shops', JSON.stringify(shops));
+        renderShops(shops);
+        addForm.reset();
+        preview.src = '';
+        addForm.style.display = 'none';
+      });
+    }
+
+    document.getElementById('search').addEventListener('input', e => {
+      const q = e.target.value.toLowerCase();
+      const allShops = JSON.parse(localStorage.getItem('shops') || '[]').concat(demoShops);
+      const filtered = allShops.filter(s =>
+        s.shopName.toLowerCase().includes(q) || s.category.toLowerCase().includes(q)
+      );
+      renderShops(filtered);
     });
 
-    // Form submit
-    document.getElementById('shopForm').addEventListener('submit', function(e) {
-      e.preventDefault();
-
-      const name = document.getElementById('shopName').value;
-      const owner = document.getElementById('ownerName').value;
-      const description = document.getElementById('description').value;
-      const contact = document.getElementById('contact').value;
-      const lat = parseFloat(document.getElementById('latitude').value);
-      const lng = parseFloat(document.getElementById('longitude').value);
-
-      const imageFile = imgInput.files[0];
-      const reader = new FileReader();
-      reader.onload = function(event) {
-        const imageBase64 = event.target.result;
-        const shop = { name, owner, description, contact, lat, lng, image: imageBase64 };
-
-        const allShops = JSON.parse(localStorage.getItem("shops") || "[]");
-        allShops.push(shop);
-        localStorage.setItem("shops", JSON.stringify(allShops));
-
-        displayShop(shop);
-        document.getElementById('shopForm').reset();
-        preview.style.display = 'none';
-      };
-      if (imageFile) reader.readAsDataURL(imageFile);
-    });
+    window.onload = () => {
+      const savedShops = JSON.parse(localStorage.getItem('shops') || '[]');
+      renderShops(savedShops.length ? savedShops : demoShops);
+    };
   </script>
 </body>
 </html>
