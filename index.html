@@ -4,163 +4,45 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ShopNearBuy</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <style>
-    body { margin: 0; font-family: Arial; background: #f4f4f4; }
-    #map { height: 60vh; width: 100%; }
-    .form-container { padding: 10px; display: none; background: #fff; }
-    .shop-list { padding: 10px; }
-    .shop-card { border: 1px solid #ccc; margin-bottom: 10px; padding: 10px; background: #fff; }
-    .shop-card img { max-width: 100%; max-height: 150px; display: block; margin-bottom: 5px; }
-    .show-form-btn { position: fixed; bottom: 20px; right: 20px; background: #007bff; color: #fff; border: none; padding: 15px; border-radius: 50%; font-size: 20px; }
-    input, textarea, select { width: 100%; margin: 5px 0; padding: 8px; }
-  </style>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <h1>ShopNearBuy</h1>
 
-<h2 style="text-align:center">ShopNearBuy.com</h2>
+  <div id="map"></div>
 
-<div id="map"></div>
+  <div class="controls">
+    <input type="text" id="search" placeholder="Search by name or category..." />
+    <div id="addBtn">➕</div>
+  </div>
 
-<!-- Add Shop Button -->
-<button class="show-form-btn" onclick="toggleForm()">+</button>
+  <div id="addForm">
+    <input type="text" id="shopName" placeholder="Shop Name" required />
+    <input type="text" id="ownerName" placeholder="Owner Name" required />
+    <select id="shopCategory">
+      <option value="">Select Category</option>
+      <option>Grocery</option>
+      <option>Restaurant</option>
+      <option>Salon</option>
+      <option>Medical</option>
+      <option>Electronics</option>
+      <option>Other</option>
+    </select>
+    <textarea id="description" placeholder="Shop Description" required></textarea>
 
-<!-- Shop Add Form -->
-<div class="form-container" id="form">
-  <h3>Add New Shop</h3>
-  <input type="text" id="shopName" placeholder="Shop Name" required />
-  <input type="text" id="ownerName" placeholder="Owner Name" required />
-  <input type="text" id="category" placeholder="Shop Category (e.g. Grocery, Salon)" required />
-  <textarea id="description" placeholder="Shop Description" required></textarea>
-  <input type="tel" id="contact" placeholder="Contact Number (optional)" />
-  <label>Capture Photo:</label>
-  <input type="file" accept="image/*" capture="environment" id="imageInput" required />
-  <img id="preview" style="max-width:100%; max-height:200px; margin:10px 0;" />
-  <button onclick="saveShop()">Save</button>
-</div>
+    <video id="camera" autoplay playsinline width="100%" style="max-height: 200px; border-radius: 10px;"></video>
+    <button type="button" onclick="capturePhoto()">📸 Capture Photo</button>
+    <canvas id="canvas" style="display: none;"></canvas>
+    <img id="preview" class="preview" alt="Captured image" />
 
-<!-- Shop Search -->
-<div style="padding: 10px;">
-  <input type="text" id="search" placeholder="Search shop name or category" oninput="filterShops()" />
-</div>
+    <input type="text" id="contact" placeholder="Contact Number (optional)" />
+    <button onclick="saveShop()">Save Shop</button>
+  </div>
 
-<!-- Shop List -->
-<div class="shop-list" id="shopList"></div>
+  <div id="shopsList"></div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-  let map = L.map('map').setView([0, 0], 15);
-  let userMarker;
-
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-  navigator.geolocation.watchPosition(
-    (position) => {
-      const lat = position.coords.latitude;
-      const lng = position.coords.longitude;
-      map.setView([lat, lng], 17);
-
-      if (!userMarker) {
-        userMarker = L.marker([lat, lng], { title: "You are here" }).addTo(map);
-      } else {
-        userMarker.setLatLng([lat, lng]);
-      }
-    },
-    (err) => alert("Geolocation failed."),
-    { enableHighAccuracy: true }
-  );
-
-  function toggleForm() {
-    const form = document.getElementById('form');
-    form.style.display = form.style.display === 'block' ? 'none' : 'block';
-  }
-
-  document.getElementById('imageInput').addEventListener('change', function (e) {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        document.getElementById('preview').src = reader.result;
-      };
-      reader.readAsDataURL(file);
-    }
-  });
-
-  function saveShop() {
-    const shop = {
-      name: document.getElementById('shopName').value,
-      owner: document.getElementById('ownerName').value,
-      category: document.getElementById('category').value,
-      desc: document.getElementById('description').value,
-      contact: document.getElementById('contact').value,
-      image: document.getElementById('preview').src,
-    };
-    if (!shop.name || !shop.owner || !shop.desc || !shop.image || !shop.category) {
-      alert('Please fill all required fields.');
-      return;
-    }
-    let shops = JSON.parse(localStorage.getItem('shops') || '[]');
-    shops.push(shop);
-    localStorage.setItem('shops', JSON.stringify(shops));
-    displayShops();
-    document.getElementById('form').reset();
-    document.getElementById('preview').src = '';
-    toggleForm();
-  }
-
-  function displayShops() {
-    const list = document.getElementById('shopList');
-    const shops = JSON.parse(localStorage.getItem('shops') || '[]');
-    list.innerHTML = '';
-    shops.forEach((shop) => {
-      const div = document.createElement('div');
-      div.className = 'shop-card';
-      div.innerHTML = `
-        <img src="${shop.image}" />
-        <b>${shop.name}</b><br/>
-        <small>${shop.category}</small><br/>
-        Owner: ${shop.owner}<br/>
-        ${shop.desc}<br/>
-        ${shop.contact ? '📞 ' + shop.contact : ''}
-      `;
-      list.appendChild(div);
-    });
-  }
-
-  function filterShops() {
-    const search = document.getElementById('search').value.toLowerCase();
-    const all = document.querySelectorAll('.shop-card');
-    all.forEach(card => {
-      const text = card.innerText.toLowerCase();
-      card.style.display = text.includes(search) ? 'block' : 'none';
-    });
-  }
-
-  // Add demo shops if none saved
-  if (!localStorage.getItem('shops')) {
-    const demo = [
-      {
-        name: "Fresh Mart",
-        owner: "Anita Rao",
-        category: "Grocery",
-        desc: "Daily fresh fruits and veggies",
-        contact: "9876543210",
-        image: "https://via.placeholder.com/300x200?text=Fresh+Mart"
-      },
-      {
-        name: "Urban Salon",
-        owner: "Rakesh",
-        category: "Salon",
-        desc: "Men's Haircut & Styling",
-        contact: "1234567890",
-        image: "https://via.placeholder.com/300x200?text=Urban+Salon"
-      }
-    ];
-    localStorage.setItem('shops', JSON.stringify(demo));
-  }
-
-  displayShops();
-</script>
-
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
