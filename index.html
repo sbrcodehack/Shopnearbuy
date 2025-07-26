@@ -3,17 +3,17 @@
 <head>
   <title>Shop Near Buy</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <style>
     body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f5f5f5; }
     header { background: #2196f3; color: white; padding: 15px; text-align: center; font-size: 22px; }
     #map { height: 300px; width: 100%; }
-    form, .shop-list { padding: 20px; background: white; margin-top: 10px; }
-    input, textarea, button { width: 100%; margin-bottom: 15px; padding: 10px; font-size: 16px; }
+    form, #shopList { padding: 15px; background: white; }
+    input, textarea, button { width: 100%; margin-bottom: 10px; padding: 10px; font-size: 16px; }
     button { background: #4CAF50; color: white; border: none; cursor: pointer; }
     button:hover { background: #45a049; }
-    .shop-item { margin-bottom: 15px; border-bottom: 1px solid #ccc; padding-bottom: 10px; }
-    .shop-item img { max-width: 100%; height: auto; border-radius: 5px; }
+    .shop-card { background: #e0f7fa; margin: 10px 0; padding: 10px; border-radius: 5px; }
+    .shop-card img { width: 100px; height: auto; margin-top: 5px; }
   </style>
 </head>
 <body>
@@ -25,54 +25,121 @@
     <input type="text" id="ownerName" placeholder="Owner Name" required>
     <textarea id="description" placeholder="Short Description" required></textarea>
     <input type="tel" id="contact" placeholder="Contact Number (Optional)">
-    <input type="file" id="image" accept="image/*" capture="environment" required>
+    <input type="file" id="image" accept="image/*" required>
+    <img id="preview" style="width:100px; display:none;"/>
     <input type="hidden" id="latitude">
     <input type="hidden" id="longitude">
     <button type="submit">Add Shop</button>
   </form>
 
-  <div class="shop-list" id="shopList">
-    <h3>Nearby Shops</h3>
-    <div class="shop-item">
-      <strong>Super Kirana</strong><br>
-      Owner: Ramesh<br>
-      "All groceries available"<br>
-      📞 9876543210<br>
-      <img src="https://via.placeholder.com/300x150" alt="Shop Image">
-    </div>
-    <div class="shop-item">
-      <strong>Fresh Veggies</strong><br>
-      Owner: Sita<br>
-      "Organic vegetables daily"<br>
-      📞 9988776655<br>
-      <img src="https://via.placeholder.com/300x150" alt="Shop Image">
-    </div>
+  <div id="shopList">
+    <h3>Added Shops:</h3>
+    <div id="shops"></div>
   </div>
 
-  <!-- Leaflet Map Scripts -->
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script>
-    let map, marker;
+    let map = L.map('map').setView([20.5937, 78.9629], 5); // Default: India center
 
+    // Add OpenStreetMap layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19
+    }).addTo(map);
+
+    // Preview image
+    const imgInput = document.getElementById('image');
+    const preview = document.getElementById('preview');
+    imgInput.addEventListener('change', function() {
+      const file = imgInput.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = e => {
+          preview.src = e.target.result;
+          preview.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // Add default demo shops
+    const demoShops = [
+      {
+        name: "Fresh Veggies",
+        owner: "Raj Kumar",
+        description: "Best organic vegetables.",
+        contact: "9876543210",
+        lat: 28.6139,
+        lng: 77.2090
+      },
+      {
+        name: "ElectroMart",
+        owner: "Neha Sharma",
+        description: "All electronic gadgets available.",
+        contact: "9988776655",
+        lat: 19.0760,
+        lng: 72.8777
+      }
+    ];
+
+    function displayShop(shop) {
+      const div = document.createElement('div');
+      div.className = 'shop-card';
+      div.innerHTML = `
+        <strong>${shop.name}</strong><br>
+        Owner: ${shop.owner}<br>
+        ${shop.description}<br>
+        Contact: ${shop.contact || "N/A"}<br>
+        ${shop.image ? `<img src="${shop.image}" alt="shop">` : ""}
+      `;
+      document.getElementById('shops').appendChild(div);
+
+      if (shop.lat && shop.lng) {
+        L.marker([shop.lat, shop.lng])
+          .addTo(map)
+          .bindPopup(`<b>${shop.name}</b><br>${shop.description}`);
+      }
+    }
+
+    // Load from localStorage
+    const saved = JSON.parse(localStorage.getItem("shops") || "[]");
+    [...demoShops, ...saved].forEach(displayShop);
+
+    // Capture current location
     navigator.geolocation.getCurrentPosition(position => {
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
       document.getElementById('latitude').value = lat;
       document.getElementById('longitude').value = lng;
-
-      map = L.map('map').setView([lat, lng], 15);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
-      }).addTo(map);
-
-      marker = L.marker([lat, lng]).addTo(map)
-        .bindPopup("You are here").openPopup();
+      map.setView([lat, lng], 15);
+      L.marker([lat, lng]).addTo(map).bindPopup("You are here").openPopup();
     });
 
-    document.getElementById('shopForm').addEventListener('submit', function (e) {
+    // Form submit
+    document.getElementById('shopForm').addEventListener('submit', function(e) {
       e.preventDefault();
-      alert("Shop submitted! (In real version, this will save to a database or Google Sheet)");
-      this.reset();
+
+      const name = document.getElementById('shopName').value;
+      const owner = document.getElementById('ownerName').value;
+      const description = document.getElementById('description').value;
+      const contact = document.getElementById('contact').value;
+      const lat = parseFloat(document.getElementById('latitude').value);
+      const lng = parseFloat(document.getElementById('longitude').value);
+
+      const imageFile = imgInput.files[0];
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        const imageBase64 = event.target.result;
+        const shop = { name, owner, description, contact, lat, lng, image: imageBase64 };
+
+        const allShops = JSON.parse(localStorage.getItem("shops") || "[]");
+        allShops.push(shop);
+        localStorage.setItem("shops", JSON.stringify(allShops));
+
+        displayShop(shop);
+        document.getElementById('shopForm').reset();
+        preview.style.display = 'none';
+      };
+      if (imageFile) reader.readAsDataURL(imageFile);
     });
   </script>
 </body>
