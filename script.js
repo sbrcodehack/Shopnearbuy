@@ -1,149 +1,162 @@
-// Supabase credentials
-const SUPABASE_URL = 'https://jhedjiolhqdxmqjknipz.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpoZWRqaW9saHFkeG1xamtuaXB6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM1MzUzMjcsImV4cCI6MjA2OTExMTMyN30.z5aYCuIHuUb_GXqbGO8rMki-36f7SYT0PVAUeMvcS0Q';
-
-const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-// Initialize map
-const map = L.map('map').setView([12.9716, 77.5946], 13);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© OpenStreetMap'
-}).addTo(map);
-console.log("🗺️ Map initialized");
-
-// Camera setup
-navigator.mediaDevices.getUserMedia({ video: true })
-  .then(stream => {
-    document.getElementById('camera').srcObject = stream;
-    console.log("📷 Camera started");
-  })
-  .catch(error => console.error("🚫 Camera error:", error));
-
+let map;
+const preview = document.getElementById('preview');
+const addForm = document.getElementById('addForm');
+const addBtn = document.getElementById('addBtn');
+const video = document.getElementById('camera');
 const canvas = document.getElementById('canvas');
-const context = canvas.getContext('2d');
-let capturedImage = null;
+const shopsList = document.getElementById('shopsList');
+let stream;
+
+// Initialize map using user's current location
+function initMap() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        map = L.map('map').setView([lat, lng], 15);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        L.marker([lat, lng]).addTo(map).bindPopup('You are here').openPopup();
+
+        const savedShops = JSON.parse(localStorage.getItem('shops') || '[]');
+        renderShops(savedShops.length ? savedShops : demoShops);
+      },
+      error => {
+        alert("Location access denied. Using default location.");
+        fallbackMap();
+      }
+    );
+  } else {
+    alert("Geolocation not supported.");
+    fallbackMap();
+  }
+}
+
+// Fallback if user denies location
+function fallbackMap() {
+  const lat = 12.9716;
+  const lng = 77.5946;
+  map = L.map('map').setView([lat, lng], 13);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+  }).addTo(map);
+
+  const savedShops = JSON.parse(localStorage.getItem('shops') || '[]');
+  renderShops(savedShops.length ? savedShops : demoShops);
+}
+
+async function startCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    video.srcObject = stream;
+  } catch (err) {
+    alert('Camera access denied or not available.');
+    console.error(err);
+  }
+}
 
 function capturePhoto() {
-  const video = document.getElementById('camera');
+  const ctx = canvas.getContext('2d');
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
-  context.drawImage(video, 0, 0);
-  capturedImage = canvas.toDataURL('image/jpeg');
-  document.getElementById('preview').src = capturedImage;
-  console.log("📸 Photo captured");
+  ctx.drawImage(video, 0, 0);
+  const dataURL = canvas.toDataURL('image/jpeg');
+  preview.src = dataURL;
 }
 
-document.getElementById('addBtn').addEventListener('click', () => {
-  document.getElementById('addForm').style.display = 'block';
+addBtn.addEventListener('click', () => {
+  const isVisible = addForm.style.display === 'block';
+  addForm.style.display = isVisible ? 'none' : 'block';
+  if (!isVisible) startCamera();
 });
 
-// Save shop to Supabase
-async function saveShop() {
-  console.log("💾 Save button clicked");
-
-  const shopName = document.getElementById('shopName').value.trim();
-  const ownerName = document.getElementById('ownerName').value.trim();
-  const description = document.getElementById('description').value.trim();
-  const category = document.getElementById('shopCategory').value.trim();
-  const contact = document.getElementById('contact').value.trim();
-
-  if (!shopName || !ownerName || !description || !category) {
-    alert("Please fill all required fields.");
-    console.warn("⚠️ Validation failed");
-    return;
+const demoShops = [
+  {
+    shopName: "Krishna Grocery",
+    ownerName: "Ravi Kumar",
+    category: "Grocery",
+    description: "Fresh fruits and vegetables daily.",
+    image: "https://via.placeholder.com/150",
+    contact: "9876543210",
+    lat: 12.9716,
+    lng: 77.5946
+  },
+  {
+    shopName: "Star Salon",
+    ownerName: "Priya Mehra",
+    category: "Salon",
+    description: "Affordable haircuts and beauty treatments.",
+    image: "https://via.placeholder.com/150",
+    contact: "9988776655",
+    lat: 12.9736,
+    lng: 77.5966
   }
+];
 
-  const { lat, lng } = map.getCenter();
-  console.log("📍 Location:", lat, lng);
-
-  let image_url = '';
-  if (capturedImage) {
-    console.log("📤 Uploading image to Supabase...");
-    const imageName = `shop_${Date.now()}.jpg`;
-    const { data: imageData, error: imageError } = await client.storage
-      .from('images')
-      .upload(imageName, dataURItoBlob(capturedImage), {
-        contentType: 'image/jpeg',
-      });
-
-    if (imageError) {
-      console.error("❌ Image upload failed:", imageError);
-    } else {
-      image_url = `${SUPABASE_URL}/storage/v1/object/public/images/${imageName}`;
-      console.log("✅ Image uploaded:", image_url);
-    }
-  }
-
-  console.log("📨 Sending shop data to Supabase...");
-  const { data, error } = await client
-    .from('shops')
-    .insert([{
-      shop_name: shopName,
-      owner_name: ownerName,
-      description,
-      category,
-      contact,
-      lat,
-      lng,
-      image_url
-    }]);
-
-  if (error) {
-    console.error("❌ Failed to save shop:", error);
-    alert("Failed to save shop. Check console for error.");
-  } else {
-    console.log("✅ Shop saved to Supabase:", data);
-    alert("Shop saved successfully!");
-    fetchAndDisplayShops();
-    document.getElementById('addForm').reset();
-    document.getElementById('preview').src = '';
-    document.getElementById('addForm').style.display = 'none';
-  }
-}
-
-// Convert base64 to Blob for upload
-function dataURItoBlob(dataURI) {
-  const byteString = atob(dataURI.split(',')[1]);
-  const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
-  const ab = new ArrayBuffer(byteString.length);
-  const ia = new Uint8Array(ab);
-  for (let i = 0; i < byteString.length; i++) {
-    ia[i] = byteString.charCodeAt(i);
-  }
-  return new Blob([ab], { type: mimeString });
-}
-
-// Fetch shops from Supabase and display
-async function fetchAndDisplayShops() {
-  console.log("🔄 Fetching shops from Supabase...");
-  const { data: shops, error } = await client.from('shops').select('*');
-
-  if (error) {
-    console.error("❌ Error fetching shops:", error);
-    return;
-  }
-
-  console.log("✅ Shops fetched:", shops.length);
-  const list = document.getElementById('shopsList');
-  list.innerHTML = '';
-
+function renderShops(shops) {
+  shopsList.innerHTML = '';
   shops.forEach(shop => {
-    const item = document.createElement('div');
-    item.className = 'shop-item';
-    item.innerHTML = `
-      <h3>${shop.shop_name}</h3>
+    let div = document.createElement('div');
+    div.className = 'shop';
+    div.innerHTML = `
+      <h3>${shop.shopName} (${shop.category})</h3>
+      <p><strong>Owner:</strong> ${shop.ownerName}</p>
       <p>${shop.description}</p>
-      <p><b>Owner:</b> ${shop.owner_name}</p>
-      <p><b>Category:</b> ${shop.category}</p>
-      <p><b>Contact:</b> ${shop.contact || 'N/A'}</p>
-      ${shop.image_url ? `<img src="${shop.image_url}" style="width:100%; max-width:300px;" />` : ''}
+      ${shop.contact ? `<p><strong>Contact:</strong> ${shop.contact}</p>` : ''}
+      <img class="preview" src="${shop.image}" alt="Shop Image" />
     `;
-    list.appendChild(item);
-
-    L.marker([shop.lat, shop.lng])
-      .addTo(map)
-      .bindPopup(`<b>${shop.shop_name}</b><br>${shop.description}`);
+    shopsList.appendChild(div);
+    if (shop.lat && shop.lng) {
+      L.marker([shop.lat, shop.lng]).addTo(map)
+        .bindPopup(`<b>${shop.shopName}</b><br>${shop.description}`);
+    }
   });
 }
 
-fetchAndDisplayShops();
+function saveShop() {
+  const name = document.getElementById('shopName').value.trim();
+  const owner = document.getElementById('ownerName').value.trim();
+  const desc = document.getElementById('description').value.trim();
+  const category = document.getElementById('shopCategory').value;
+  const contact = document.getElementById('contact').value.trim();
+  const image = preview.src;
+
+  if (!name || !owner || !desc || !category || !image) {
+    alert("Please fill all required fields and capture a photo.");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(pos => {
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+    const newShop = { shopName: name, ownerName: owner, description: desc, category, contact, image, lat, lng };
+    const shops = JSON.parse(localStorage.getItem('shops') || '[]');
+    shops.push(newShop);
+    localStorage.setItem('shops', JSON.stringify(shops));
+    renderShops(shops);
+    addForm.reset();
+    preview.src = '';
+    addForm.style.display = 'none';
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+    }
+  });
+}
+
+document.getElementById('search').addEventListener('input', e => {
+  const q = e.target.value.toLowerCase();
+  const allShops = JSON.parse(localStorage.getItem('shops') || '[]').concat(demoShops);
+  const filtered = allShops.filter(s =>
+    s.shopName.toLowerCase().includes(q) || s.category.toLowerCase().includes(q)
+  );
+  renderShops(filtered);
+});
+
+window.onload = () => {
+  initMap();
+};
