@@ -39,7 +39,6 @@ function initMap() {
   }
 }
 
-// Fallback if user denies location
 function fallbackMap() {
   const lat = 12.9716;
   const lng = 77.5946;
@@ -63,7 +62,7 @@ async function startCamera() {
   }
 }
 
-// Capture photo from video
+// Capture photo
 function capturePhoto() {
   const ctx = canvas.getContext('2d');
   canvas.width = video.videoWidth;
@@ -73,23 +72,23 @@ function capturePhoto() {
   preview.src = dataURL;
 }
 
-// Toggle add form visibility
+// Toggle form
 addBtn.addEventListener('click', () => {
   const isVisible = addForm.style.display === 'block';
   addForm.style.display = isVisible ? 'none' : 'block';
   if (!isVisible) startCamera();
 });
 
-// Save shop to Supabase
+// Save shop to Supabase with schema-compliant fields
 async function saveShop() {
   const name = document.getElementById('shopName').value.trim();
   const owner = document.getElementById('ownerName').value.trim();
   const desc = document.getElementById('description').value.trim();
   const category = document.getElementById('shopCategory').value;
   const contact = document.getElementById('contact').value.trim();
-  const image = preview.src;
+  const imageDataUrl = preview.src;
 
-  if (!name || !owner || !desc || !category || !image) {
+  if (!name || !owner || !desc || !category || !imageDataUrl) {
     alert("Please fill all required fields and capture a photo.");
     return;
   }
@@ -102,11 +101,11 @@ async function saveShop() {
       shop_name: name,
       owner_name: owner,
       description: desc,
-      category,
-      contact,
-      image,
-      lat,
-      lng
+      category: category,
+      contact: contact,
+      lat: lat,
+      lng: lng,
+      image_url: imageDataUrl
     }]);
 
     if (error) {
@@ -123,30 +122,37 @@ async function saveShop() {
   });
 }
 
-// Load shops from Supabase
+// Load shops from DB
 async function loadShops() {
-  const { data, error } = await supabase.from('shops').select('*');
+  const { data, error } = await supabase
+    .from('shops')
+    .select('*')
+    .order('created_at', { ascending: false });
+
   if (error) {
     console.error("Error loading shops:", error.message);
-  } else {
-    renderShops(data);
+    return;
   }
+
+  renderShops(data);
 }
 
-// Render shop cards and markers
+// Render shops on page and map
 function renderShops(shops) {
   shopsList.innerHTML = '';
   shops.forEach(shop => {
-    let div = document.createElement('div');
+    const div = document.createElement('div');
     div.className = 'shop';
     div.innerHTML = `
       <h3>${shop.shop_name} (${shop.category})</h3>
       <p><strong>Owner:</strong> ${shop.owner_name}</p>
       <p>${shop.description}</p>
       ${shop.contact ? `<p><strong>Contact:</strong> ${shop.contact}</p>` : ''}
-      <img class="preview" src="${shop.image}" alt="Shop Image" />
+      <img class="preview" src="${shop.image_url}" alt="Shop Image" />
+      <p style="font-size: 0.8em; color: gray;">Added on: ${new Date(shop.created_at).toLocaleString()}</p>
     `;
     shopsList.appendChild(div);
+
     if (map && shop.lat && shop.lng) {
       L.marker([shop.lat, shop.lng]).addTo(map)
         .bindPopup(`<b>${shop.shop_name}</b><br>${shop.description}`);
@@ -154,19 +160,20 @@ function renderShops(shops) {
   });
 }
 
-// Search shops
+// Search
 document.getElementById('search').addEventListener('input', async e => {
   const q = e.target.value.toLowerCase();
   const { data, error } = await supabase.from('shops').select('*');
   if (!error) {
     const filtered = data.filter(s =>
-      s.shop_name.toLowerCase().includes(q) || s.category.toLowerCase().includes(q)
+      s.shop_name.toLowerCase().includes(q) ||
+      s.category.toLowerCase().includes(q)
     );
     renderShops(filtered);
   }
 });
 
-// Initialize on load
+// Load on window ready
 window.onload = () => {
   initMap();
 };
