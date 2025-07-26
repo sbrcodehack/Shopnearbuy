@@ -1,14 +1,54 @@
-let map = L.map('map').setView([12.9716, 77.5946], 13);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© OpenStreetMap'
-}).addTo(map);
-
+let map;
 const preview = document.getElementById('preview');
 const addForm = document.getElementById('addForm');
 const addBtn = document.getElementById('addBtn');
 const video = document.getElementById('camera');
 const canvas = document.getElementById('canvas');
+const shopsList = document.getElementById('shopsList');
 let stream;
+
+// Initialize map using user's current location
+function initMap() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        map = L.map('map').setView([lat, lng], 15);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        L.marker([lat, lng]).addTo(map).bindPopup('You are here').openPopup();
+
+        const savedShops = JSON.parse(localStorage.getItem('shops') || '[]');
+        renderShops(savedShops.length ? savedShops : demoShops);
+      },
+      error => {
+        alert("Location access denied. Using default location.");
+        fallbackMap();
+      }
+    );
+  } else {
+    alert("Geolocation not supported.");
+    fallbackMap();
+  }
+}
+
+// Fallback if user denies location
+function fallbackMap() {
+  const lat = 12.9716;
+  const lng = 77.5946;
+  map = L.map('map').setView([lat, lng], 13);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+  }).addTo(map);
+
+  const savedShops = JSON.parse(localStorage.getItem('shops') || '[]');
+  renderShops(savedShops.length ? savedShops : demoShops);
+}
 
 async function startCamera() {
   try {
@@ -57,8 +97,6 @@ const demoShops = [
     lng: 77.5966
   }
 ];
-
-const shopsList = document.getElementById('shopsList');
 
 function renderShops(shops) {
   shopsList.innerHTML = '';
@@ -120,6 +158,5 @@ document.getElementById('search').addEventListener('input', e => {
 });
 
 window.onload = () => {
-  const savedShops = JSON.parse(localStorage.getItem('shops') || '[]');
-  renderShops(savedShops.length ? savedShops : demoShops);
+  initMap();
 };
