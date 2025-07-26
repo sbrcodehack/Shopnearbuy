@@ -2,42 +2,23 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ShopNearBuy</title>
+  <title>Shop Locator</title>
   <link rel="stylesheet" href="style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 </head>
 <body>
-  <h1>🛍️ ShopNearBuy</h1>
-
-  <div id="map"></div>
-
-  <button id="toggleFormBtn">➕ Add Shop</button>
-
-  <div id="formContainer">
-    <form id="addForm">
-      <input type="text" placeholder="Shop Name" id="shopName" required />
-      <input type="text" placeholder="Owner Name" id="ownerName" required />
-      <input type="text" placeholder="Description" id="desc" required />
-      <input type="text" placeholder="Contact (Optional)" id="contact" />
-      <select id="category">
-        <option>Grocery</option>
-        <option>Clothing</option>
-        <option>Food</option>
-        <option>Salon</option>
-        <option>Other</option>
-      </select><br />
-      <video id="camera" autoplay playsinline></video>
-      <button type="button" id="captureBtn">📸 Capture</button>
-      <canvas id="snapshot" style="display:none;"></canvas>
-      <input type="submit" value="Save Shop" />
-    </form>
-  </div>
-
-  <h2>🗂️ Nearby Shops</h2>
-  <input type="text" id="search" placeholder="Search shop..." />
-  <ul id="shopList"></ul>
+  <h1>Register a Shop</h1>
+  <form id="shopForm">
+    <input type="text" id="shop_name" placeholder="Shop Name" required />
+    <input type="text" id="owner_name" placeholder="Owner Name" />
+    <input type="text" id="description" placeholder="Description" />
+    <input type="text" id="category" placeholder="Category" />
+    <input type="text" id="contact" placeholder="Contact Number" />
+    <input type="text" id="lat" placeholder="Latitude" required />
+    <input type="text" id="lng" placeholder="Longitude" required />
+    <input type="text" id="image_url" placeholder="Image URL" />
+    <button type="submit">Submit</button>
+  </form>
+  <pre id="logOutput"></pre>
 
   <script src="script.js"></script>
 </body>
